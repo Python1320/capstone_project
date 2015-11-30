@@ -1,7 +1,7 @@
 /****************************************************************************
- * configs/haltian-tsone/scripts/stm32l162zd.ld
+ * configs/mikroe-stm32f4/scripts/ld.script
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2011-2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,33 +33,32 @@
  *
  ****************************************************************************/
 
-#include <nuttx/config.h>
-
-/* The STM32L162ZD has 384KB of FLASH beginning at address 0x0800:0000 and
- * 48Kb of SRAM at address 0x20000000.
+/* The STM32F407VG has 1024Kb of FLASH beginning at address 0x0800:0000 and
+ * 192Kb of SRAM. SRAM is split up into three blocks:
+ *
+ * 1) 112Kb of SRAM beginning at address 0x2000:0000
+ * 2)  16Kb of SRAM beginning at address 0x2001:c000
+ * 3)  64Kb of CCM SRAM beginning at address 0x1000:0000
  *
  * When booting from FLASH, FLASH memory is aliased to address 0x0000:0000
  * where the code expects to begin execution by jumping to the entry point in
- * the 0x0800:0000 address range.
+ * the 0x0800:0000 address
+ * range.
  */
 
 MEMORY
 {
-    flash (rx) : ORIGIN = CONFIG_NUTTX_DFU_IMAGE_FLASHING_ADDRESS, LENGTH = 384K
-    sram (rwx) : ORIGIN = 0x20000000, LENGTH = 48K
+    flash (rx) : ORIGIN = 0x08000000, LENGTH = 512K
+    sram (rwx) : ORIGIN = 0x20000000, LENGTH = 80K
 }
-
-_application_flash_size = _application_flash_end - _application_flash_start;
 
 OUTPUT_ARCH(arm)
 ENTRY(_stext)
 SECTIONS
 {
 	.text : {
-		_application_flash_start = ABSOLUTE(.);
 		_stext = ABSOLUTE(.);
 		*(.vectors)
-		KEEP(*(.application_flash_size .application_flash_size.*))
 		*(.text .text.*)
 		*(.fixup)
 		*(.gnu.warning)
@@ -98,10 +97,6 @@ SECTIONS
 		CONSTRUCTORS
 		_edata = ABSOLUTE(.);
 	} > sram AT > flash
-
-	.app_end : {
-		_application_flash_end = ABSOLUTE(.);
-	} > flash
 
 	.bss : {
 		_sbss = ABSOLUTE(.);

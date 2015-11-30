@@ -87,7 +87,7 @@
 
 /* The noreturn attribute informs GCC that the function will not return. */
 
-# define noreturn_function __attribute__ ((noreturn))
+# define noreturn_function
 
 /* The farcall_function attribute informs GCC that is should use long calls
  * (even though -mlong-calls does not appear in the compilation options)
