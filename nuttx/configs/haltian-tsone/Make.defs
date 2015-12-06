@@ -88,8 +88,8 @@ endif
 
 ARCHCFLAGS = -fno-builtin
 ARCHCXXFLAGS = -fno-builtin -fno-exceptions -fno-rtti
-ARCHWARNINGS = -Wall -Werror -Wno-error=cpp -Wstrict-prototypes -Wshadow
-ARCHWARNINGSXX = -Wall -Werror -Wno-error=cpp -Wshadow
+ARCHWARNINGS =  -Wno-error=cpp -Wstrict-prototypes -Wshadow
+ARCHWARNINGSXX =  -Wno-error=cpp -Wshadow
 ARCHDEFINES =
 ARCHPICFLAGS = -fpic -msingle-pic-base -mpic-register=r10
 
