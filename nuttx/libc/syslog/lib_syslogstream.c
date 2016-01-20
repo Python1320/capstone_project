@@ -93,7 +93,7 @@ static void syslogstream_putc(FAR struct lib_outstream_s *this, int ch)
        * syslog_putc returns EOF with the errno value set;
        */
 
-      ret = syslog_putc(ch);
+      ret = 1; // syslog_putc(ch);
       if (ret != EOF)
         {
           this->nput++;

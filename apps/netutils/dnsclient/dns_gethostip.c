@@ -86,7 +86,7 @@ int dns_gethostip_multi(FAR const char *hostname, FAR in_addr_t *ipaddr,
 
   if (nipaddr == 0 || !ipaddr)
     {
-      errno = EINVAL;
+      set_errno ( EINVAL );
       return ret;
     }
 
@@ -96,7 +96,7 @@ int dns_gethostip_multi(FAR const char *hostname, FAR in_addr_t *ipaddr,
       ret = dns_query_sock_multi(sockfd, hostname, ipaddr, nipaddr);
       err = errno;
       dns_free_sock(&sockfd);
-      errno = err;
+      set_errno( err );
     }
 
   return ret;

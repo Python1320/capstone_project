@@ -278,7 +278,7 @@ static uint16_t transform_16bit(uint16_t ctr)
 
   if (!g.init)
     {
-      speckrandom_buf(&g.rand, sizeof(g.rand));
+      //speckrandom_buf(&g.rand, sizeof(g.rand));
       g.init = true;
     }
 
@@ -404,7 +404,7 @@ static int dns_send_query(int sockfd, FAR const char *name,
        {
          /* Too long name! */
 
-         errno = EMSGSIZE;
+         set_errno(EMSGSIZE);
          return ERROR;
        }
 
@@ -416,7 +416,7 @@ static int dns_send_query(int sockfd, FAR const char *name,
            {
              /* Too long name! */
 
-             errno = EMSGSIZE;
+             set_errno(EMSGSIZE);
              return ERROR;
            }
 
@@ -432,7 +432,7 @@ static int dns_send_query(int sockfd, FAR const char *name,
     {
       /* Too long name! */
 
-      errno = EMSGSIZE;
+      set_errno(EMSGSIZE);
       return ERROR;
     }
 
@@ -448,7 +448,7 @@ static int dns_send_query(int sockfd, FAR const char *name,
     {
       /* Too long name! */
 
-      errno = EMSGSIZE;
+      set_errno(EMSGSIZE);
       return ERROR;
     }
 
@@ -463,7 +463,7 @@ static int dns_send_query(int sockfd, FAR const char *name,
     {
       /* Out of memory. */
 
-      errno = ENOMEM;
+      set_errno(ENOMEM);
       return ERROR;
     }
 
@@ -485,7 +485,7 @@ static int dns_send_query(int sockfd, FAR const char *name,
       int err = errno;
       free(qinfo->qname);
       qinfo->qname = NULL;
-      errno = err;
+      set_errno(err);
     }
 
   return wlen;
@@ -534,7 +534,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
       /* Not response from DNS server. */
 
       ndbg("packet from wrong address\n");
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -543,7 +543,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
       /* Not response from DNS server. */
 
       ndbg("packet from wrong port\n");
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -554,7 +554,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
       ndbg("too short DNS response (len: %d, expect at least: %d)\n",
            buflen, sizeof(*hdr));
 
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -571,7 +571,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
 
   if ((hdr->flags2 & DNS_FLAG2_ERR_MASK) != 0)
     {
-      errno = EHOSTUNREACH;
+      set_errno(EHOSTUNREACH);
       return ERROR;
     }
 
@@ -582,7 +582,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
       ndbg("wrong DNS response ID (expected %d, got %d).\n",
            qinfo->id, hdr->id);
 
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -597,7 +597,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
     {
       ndbg("wrong number of questions (expected %d, got %d).\n", 1, nquestions);
 
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -642,7 +642,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
     {
       ndbg("invalid DNS response, response name different length than query.\n");
 
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -650,7 +650,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
     {
       ndbg("invalid DNS response, response name mismatch query.\n");
 
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -659,7 +659,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
     {
       ndbg("malformed DNS response, no answers section.\n");
 
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -670,7 +670,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
     {
       ndbg("invalid DNS response, question section mismatch.\n");
 
-      errno = EBADMSG;
+      set_errno(EBADMSG);
       return ERROR;
     }
 
@@ -779,7 +779,7 @@ static int dns_recv_response(int sockfd, FAR in_addr_t *inaddr, size_t naddr,
       return naddr_read;
     }
 
-  errno = errval;
+  set_errno(errval);
   return ERROR;
 }
 
@@ -815,7 +815,7 @@ int dns_bind_sock(FAR int *sockfd)
     {
       err = errno;
       ndbg("ERROR: socket() failed: %d\n", errno);
-      errno = err;
+      set_errno(err);
       return ERROR;
     }
 
@@ -833,7 +833,7 @@ int dns_bind_sock(FAR int *sockfd)
       ndbg("ERROR: setsockopt() failed: %d\n", errno);
       close(*sockfd);
       *sockfd = -1;
-      errno = err;
+      set_errno(err);
       return ERROR;
     }
 
@@ -920,7 +920,7 @@ int dns_query_sock_multi(int sockfd, FAR const char *hostname,
 
   if (!ipaddr || nipaddr == 0)
     {
-      errno = EINVAL;
+      set_errno(EINVAL);
       return ERROR;
     }
 
@@ -1208,7 +1208,7 @@ int dns_whois_socket_multi(int sockfd, FAR const char *name,
 
   if (naddr == 0 || !addr)
     {
-      errno = EINVAL;
+      set_errno(EINVAL);
       return ERROR;
     }
 
@@ -1285,6 +1285,6 @@ int dns_whois_socket_multi(int sockfd, FAR const char *name,
 err_out:
   free(buffer);
   dns_increase_lookup_failed_count();
-  errno = err;
+  set_errno(err);
   return ERROR;
 }

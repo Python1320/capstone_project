@@ -159,13 +159,13 @@ static void lib_dtoa(FAR struct lib_outstream_s *obj, int fmt, int prec,
 
   /* Special handling for NaN and Infinity */
 
-  if (isnan(value))
+  if (value!=value)
     {
       lib_dtoa_string(obj, "NaN");
       return;
     }
 
-  if (isinf(value))
+  if (value>1e10 || value < -1e10)
     {
       if (value < 0.0)
         {
