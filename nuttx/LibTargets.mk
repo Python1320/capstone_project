@@ -89,6 +89,13 @@ crypto$(DELIM)libcrypto$(LIBEXT): context
 lib$(DELIM)libcrypto$(LIBEXT): crypto$(DELIM)libcrypto$(LIBEXT)
 	$(Q) install crypto$(DELIM)libcrypto$(LIBEXT) lib$(DELIM)libcrypto$(LIBEXT)
 
+mbedtls$(DELIM)libmbedtls$(LIBEXT): context
+	$(Q) $(MAKE) -C mbedtls TOPDIR="$(TOPDIR)" libmbedtls$(LIBEXT) KERNEL=y EXTRADEFINES=$(KDEFINE)
+
+lib$(DELIM)libmbedtls$(LIBEXT): mbedtls$(DELIM)libmbedtls$(LIBEXT)
+	$(Q) install mbedtls$(DELIM)libmbedtls$(LIBEXT) lib$(DELIM)libmbedtls$(LIBEXT)
+
+	
 fs$(DELIM)libfs$(LIBEXT): context
 	$(Q) $(MAKE) -C fs TOPDIR="$(TOPDIR)" libfs$(LIBEXT) KERNEL=y EXTRADEFINES=$(KDEFINE)
 

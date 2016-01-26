@@ -1,0 +1,22 @@
+#
+# For a description of the syntax of this configuration file,
+# see misc/tools/kconfig-language.txt.
+#
+
+config EXAMPLES_RESETDFU
+	bool "Reset to dfu mode"
+	default n
+	---help---
+		Enable the reset to dfu nsh application
+
+if EXAMPLES_RESETDFU
+
+config EXAMPLES_RESETDFU_PROGNAME
+	string "Program name"
+	default "resetdfu"
+	depends on BUILD_KERNEL
+	---help---
+		This is the name of the program that will be use when the NSH ELF
+		program is installed.
+
+endif

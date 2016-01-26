@@ -1,0 +1,3 @@
+ifeq ($(CONFIG_EXAMPLES_RESETDFU),y)
+CONFIGURED_APPS += examples/resetdfu
+endif

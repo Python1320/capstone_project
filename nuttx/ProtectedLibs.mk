@@ -65,6 +65,7 @@ ifeq ($(CONFIG_HAVE_CXX),y)
 USERLIBS += lib$(DELIM)libcxx$(LIBEXT)
 endif
 
+
 # Add library for application support.
 
 ifneq ($(APPDIR),)
@@ -81,6 +82,10 @@ endif
 
 ifeq ($(CONFIG_CRYPTO),y)
 NUTTXLIBS += lib$(DELIM)libcrypto$(LIBEXT)
+endif
+
+ifeq ($(CONFIG_MTLS),y)
+USERLIBS += lib$(DELIM)libmbedtls$(LIBEXT)
 endif
 
 # Add libraries for file system support

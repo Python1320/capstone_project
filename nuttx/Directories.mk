@@ -162,3 +162,8 @@ ifeq ($(CONFIG_CRYPTO),y)
 KERNDEPDIRS += crypto
 endif
 CLEANDIRS += crypto
+
+ifeq ($(CONFIG_MTLS),y)
+KERNDEPDIRS += mbedtls
+endif
+CLEANDIRS += mbedtls

@@ -77,6 +77,10 @@ ifeq ($(CONFIG_CRYPTO),y)
 NUTTXLIBS += lib$(DELIM)libcrypto$(LIBEXT)
 endif
 
+ifeq ($(CONFIG_MTLS),y)
+NUTTXLIBS += lib$(DELIM)libmbedtls$(LIBEXT)
+endif
+
 # Add libraries for file system support
 
 ifeq ($(CONFIG_NFILE_DESCRIPTORS),0)

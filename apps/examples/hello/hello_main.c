@@ -38,23 +38,21 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+
+#include <nuttx/mbedtls/ssl.h>
+#include <nuttx/mbedtls/x509_crt.h>
+#include <nuttx/mbedtls/entropy.h>
+#include <nuttx/mbedtls/ctr_drbg.h>
+#include <nuttx/mbedtls/md5.h>
+#include <nuttx/mbedtls/debug.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <string.h>
 #include <stdio.h>
-
-/****************************************************************************
- * Definitions
- ****************************************************************************/
-
-/****************************************************************************
- * Private Data
- ****************************************************************************/
-
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
- * hello_main
- ****************************************************************************/
+#include <netdb.h>
 
 #ifdef CONFIG_BUILD_KERNEL
 int main(int argc, FAR char *argv[])
@@ -62,6 +60,46 @@ int main(int argc, FAR char *argv[])
 int hello_main(int argc, char *argv[])
 #endif
 {
-  printf("Hello, World!!\n");
-  return 0;
+	//int ret;
+	mbedtls_entropy_context entropy;
+	mbedtls_ctr_drbg_context ctr_drbg;
+	mbedtls_ssl_context ssl;
+	mbedtls_ssl_config conf;
+
+	mbedtls_ssl_init( &ssl );
+	//mbedtls_ssl_conf_authmode( &ssl, MBEDTLS_SSL_VERIFY_NONE );
+	mbedtls_ssl_config_init( &conf );
+	mbedtls_ctr_drbg_init( &ctr_drbg );
+
+	mbedtls_entropy_init( &entropy );
+	//if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy,
+	//						   (const unsigned char *) pers,
+	//						   strlen( pers ) ) ) != 0 )
+	//{
+	//	printf( " failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret );
+	//	goto exit;
+	//}
+	
+	
+	int i;
+	unsigned char digest[16];
+	char str[] = "Hello, world!";
+
+	printf( "\n  MD5('%s') = ", str );
+
+	mbedtls_md5( (unsigned char *) str, 13, digest );
+
+	for( i = 0; i < 16; i++ )
+		printf( "%02x", digest[i] );
+
+	printf( "\n\n" );
+
+	
+	
+	mbedtls_ssl_free( &ssl );
+	mbedtls_ssl_config_free( &conf );
+	mbedtls_ctr_drbg_free( &ctr_drbg );
+	mbedtls_entropy_free( &entropy );
+	
+	return 0;
 }
