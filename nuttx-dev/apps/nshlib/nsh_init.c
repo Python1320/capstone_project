@@ -93,10 +93,6 @@ void nsh_initialize(void)
 
   (void)nsh_romfsetc();
 
-  /* Perform architecture-specific initialization (if available) */
-
-  (void)nsh_archinitialize();
-
   /* Bring up the network */
 
   (void)nsh_netinit();
