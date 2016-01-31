@@ -1,0 +1,14 @@
+#
+# For a description of the syntax of this configuration file,
+# see misc/tools/kconfig-language.txt.
+#
+
+comment "MbedTLS Support"
+
+
+config MTLS
+	bool "MbedTLS"
+	default n
+	---help---
+		Include MbedTLS
+
