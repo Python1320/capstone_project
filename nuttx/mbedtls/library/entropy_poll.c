@@ -160,7 +160,7 @@ int mbedtls_platform_entropy_poll( void *data,
 
     *olen = 0;
 
-    file = fopen( "/dev/urandom", "rb" );
+    file = fopen( "/dev/random", "rb" );
     if( file == NULL )
         return( MBEDTLS_ERR_ENTROPY_SOURCE_FAILED );
 

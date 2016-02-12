@@ -88,6 +88,9 @@ static int wsa_init_done = 0;
 
 #include <stdint.h>
 
+
+
+#if defined(DEFINE_NET_ADDRINFO)
 /*
  * Prepare for using the sockets interface
  */
@@ -106,11 +109,13 @@ static int net_prepare( void )
     }
 #else
 #if !defined(EFIX64) && !defined(EFI32)
-    //signal( SIGPIPE, SIG_IGN );
+    signal( SIGPIPE, SIG_IGN );
 #endif
 #endif
     return( 0 );
 }
+#endif
+
 
 /*
  * Initialize a context
@@ -120,6 +125,8 @@ void mbedtls_net_init( mbedtls_net_context *ctx )
     ctx->fd = -1;
 }
 
+
+#if defined(DEFINE_NET_ADDRINFO)
 /*
  * Initiate a TCP connection with host:port and the given protocol
  */
@@ -166,6 +173,7 @@ int mbedtls_net_connect( mbedtls_net_context *ctx, const char *host, const char 
 
     return( ret );
 }
+
 
 /*
  * Create a listening socket on bind_ip:port
@@ -239,6 +247,8 @@ int mbedtls_net_bind( mbedtls_net_context *ctx, const char *bind_ip, const char 
 
 }
 
+#endif
+
 #if ( defined(_WIN32) || defined(_WIN32_WCE) ) && !defined(EFIX64) && \
     !defined(EFI32)
 /*
@@ -291,14 +301,8 @@ int mbedtls_net_accept( mbedtls_net_context *bind_ctx,
 
     struct sockaddr_storage client_addr;
 
-#if defined(__socklen_t_defined) || defined(_SOCKLEN_T) ||  \
-    defined(_SOCKLEN_T_DECLARED) || defined(__DEFINED_socklen_t)
     socklen_t n = (socklen_t) sizeof( client_addr );
     socklen_t type_len = (socklen_t) sizeof( type );
-#else
-    int n = (int) sizeof( client_addr );
-    int type_len = (int) sizeof( type );
-#endif
 
     /* Is this a TCP or UDP socket? */
     if( getsockopt( bind_ctx->fd, SOL_SOCKET, SO_TYPE,
@@ -422,25 +426,17 @@ int mbedtls_net_set_nonblock( mbedtls_net_context *ctx )
 #endif
 }
 
+
+
 /*
  * Portable usleep helper
  */
 void mbedtls_net_usleep( unsigned long usec )
 {
-#if defined(_WIN32)
-    Sleep( ( usec + 999 ) / 1000 );
-#else
-    struct timeval tv;
-    tv.tv_sec  = usec / 1000000;
-#if defined(__unix__) || defined(__unix) || \
-    ( defined(__APPLE__) && defined(__MACH__) )
-    tv.tv_usec = (suseconds_t) usec % 1000000;
-#else
-    tv.tv_usec = usec % 1000000;
-#endif
-    select( 0, NULL, NULL, NULL, &tv );
-#endif
 }
+
+
+
 
 /*
  * Read at most 'len' characters
@@ -478,6 +474,8 @@ int mbedtls_net_recv( void *ctx, unsigned char *buf, size_t len )
     return( ret );
 }
 
+
+#if defined(DEFINE_NET_ADDRINFO)
 /*
  * Read at most 'len' characters, blocking for at most 'timeout' ms
  */
@@ -521,6 +519,7 @@ int mbedtls_net_recv_timeout( void *ctx, unsigned char *buf, size_t len,
     /* This call will not block */
     return( mbedtls_net_recv( ctx, buf, len ) );
 }
+#endif
 
 /*
  * Write at most 'len' characters
@@ -566,7 +565,7 @@ void mbedtls_net_free( mbedtls_net_context *ctx )
     if( ctx->fd == -1 )
         return;
 
-    shutdown( ctx->fd, 2 );
+    //shutdown( ctx->fd, 2 );
     close( ctx->fd );
 
     ctx->fd = -1;
