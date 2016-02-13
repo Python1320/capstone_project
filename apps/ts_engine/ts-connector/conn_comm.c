@@ -59,6 +59,13 @@
 #include <apps/netutils/dnsclient.h>
 #include <apps/system/conman.h>
 
+#include <mbedtls/config.h>
+#include <mbedtls/platform.h>
+#include <mbedtls/net.h>
+#include <mbedtls/ssl.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ctr_drbg.h>
+
 #include "connector.h"
 #include "conn_comm.h"
 #include "con_dbg.h"
@@ -482,38 +489,106 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       con->network_ready = true;
     }
 
-  /* Open HTTP connection to server. */
-  http_con_dbg("Open socket...\n");
-  sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0)
-    return NETWORK_ERROR;
+  const char *pers = "mini_client";
+  mbedtls_net_context server_fd;
+  struct sockaddr_in addr;
 
-  http_con_dbg("Connect to port %d ...\n", port);
-  current_srv_ip4addr->sin_port = htons(port);
-  ret = connect(sock, (struct sockaddr *)current_srv_ip4addr, sizeof(*current_srv_ip4addr));
-  if (ret < 0)
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context ctr_drbg;
+  mbedtls_ssl_context ssl;
+  mbedtls_ssl_config conf;
+  if (port == 443)
     {
-      /* Could not connect to server. Try updating server IP address on
-       * next try. */
-      memset(current_srv_ip4addr, 0, sizeof(*current_srv_ip4addr));
-      goto err_close;
-    }
+      mbedtls_ctr_drbg_init(&ctr_drbg);
 
-  /* Set up a send timeout */
-  tv.tv_sec = CONNECTION_SEND_TIMEOUT;
-  tv.tv_usec = 0;
-  ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv,
-                   sizeof(struct timeval));
-  if (ret < 0)
-    {
-      con_dbg("Setting SO_SNDTIMEO failed, errno: %d\n", errno);
-    }
+      mbedtls_net_init(&server_fd);
+      mbedtls_ssl_init(&ssl);
+      mbedtls_ssl_config_init(&conf);
+
+      mbedtls_entropy_init(&entropy);
+      
+      mbedtls_ssl_conf_rng( &conf, mbedtls_ctr_drbg_random, &ctr_drbg );
+      
+      if (mbedtls_ssl_setup(&ssl, &conf)!= 0)
+        {
+          return NETWORK_ERROR;
+        }
+
+      /* Open HTTPS connection to server. */
+      memset(&addr, 0, sizeof(addr));
+      addr.sin_family = AF_INET;
+      addr.sin.port = port;
+      addr.sin.s_addr = host;
+
+      if((server_fd.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        {
+          return NETWORK_ERROR;
+        }
+
+      if (connect(server_fd.fd,
+                  (const struct sockaddr *) &addr, sizeof(addr)) < 0)
+        {
+          close(server_fd.fd);
+          return NETWORK_ERROR;
+        }
+
+      mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+      if (mbedtls_net_handshake(&ssl) != 0)
+        {
+          close(server_fd.fd);
+          return NETWORK_ERROR;
+        }
+      /* Set up a send timeout */
+      tv.tv_sec = CONNECTION_SEND_TIMEOUT;
+      tv.tv_usec = 0;
+      ret = setsockopt(server_fd.fd, SOL_SOCKET, SO_SNDTIMEO, &tv,
+                       sizeof(struct timeval));
+      if (ret < 0)
+        {
+          con_dbg("Setting SO_SNDTIMEO failed, errno: %d\n", errno);
+        }
+      else
+        {
+          http_con_dbg("SO_SNDTIMEO := %d secs\n", CONNECTION_SEND_TIMEOUT);
+        }
+
+      http_con_dbg("Send HTTPS...\n");
+    } // if
   else
     {
-      http_con_dbg("SO_SNDTIMEO := %d secs\n", CONNECTION_SEND_TIMEOUT);
-    }
+      /* Open HTTP connection to server. */
+      http_con_dbg("Open socket...\n");
+      sock = socket(AF_INET, SOCK_STREAM, 0);
+      if (sock < 0)
+        return NETWORK_ERROR;
 
-  http_con_dbg("Send HTTP...\n");
+      http_con_dbg("Connect to port %d ...\n", port);
+      current_srv_ip4addr->sin_port = htons(port);
+      ret = connect(sock, (struct sockaddr *)current_srv_ip4addr, sizeof(*current_srv_ip4addr));
+      if (ret < 0)
+        {
+          /* Could not connect to server. Try updating server IP address on
+           * next try. */
+          memset(current_srv_ip4addr, 0, sizeof(*current_srv_ip4addr));
+          goto err_close;
+        }
+      /* Set up a send timeout */
+      tv.tv_sec = CONNECTION_SEND_TIMEOUT;
+      tv.tv_usec = 0;
+      ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv,
+                       sizeof(struct timeval));
+      if (ret < 0)
+        {
+          con_dbg("Setting SO_SNDTIMEO failed, errno: %d\n", errno);
+        }
+      else
+        {
+          http_con_dbg("SO_SNDTIMEO := %d secs\n", CONNECTION_SEND_TIMEOUT);
+        }
+
+      http_con_dbg("Send HTTP...\n");
+    } // else
   /* Write buffers in 64 byte chunks. */
   while (*pbuf) {
       const char *buf = *pbuf;
@@ -524,10 +599,26 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       do {
           ssize_t nwritten;
 
-          nwritten = send(sock, buf, len, 0);
+          if (port == 443)
+            nwritten = mbedtls_ssl_write(&ssl, buf, len, 0);
+          else
+            nwritten = send(sock, buf, len, 0);
+
           http_con_dbg("send, ret=%d\n", nwritten);
           if (nwritten < 0)
-            goto err_close;
+            {
+              if (port == 443)
+                {
+                  mbedtls_net_free(&server_fd);
+                  mbedtls_ssl_free(&ssl);
+                  mbedtls_ssl_config_free(&conf);
+                  mbedtls_ctr_drbg_free(&ctr_drbg);
+                  mbedtls_entropy_free(&entropy);
+                  return NETWORK_ERROR;
+                }
+              else
+                goto err_close;
+            }
 
           buf += nwritten;
           len -= nwritten;
