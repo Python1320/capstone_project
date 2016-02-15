@@ -489,7 +489,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       con->network_ready = true;
     }
 
-  const char *pers = "mini_client";
+  // const char *pers = "mini_client";
   mbedtls_net_context server_fd;
   struct sockaddr_in addr;
 
@@ -508,7 +508,9 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       mbedtls_entropy_init(&entropy);
       
       mbedtls_ssl_conf_rng( &conf, mbedtls_ctr_drbg_random, &ctr_drbg );
-      
+
+      sock = -1;      
+
       if (mbedtls_ssl_setup(&ssl, &conf)!= 0)
         {
           return NETWORK_ERROR;
@@ -650,7 +652,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   *pcontent = NULL;
   allocated_contentlen = 0;
   do {
-      ret = recv(sock, inbuf, sizeof(inbuf), 0);
+      ret = (port == 443) ? mbedtls_ssl_read(&ssl, (unsigned char *) inbuf, sizeof(inbuf)) : recv(sock, inbuf, sizeof(inbuf), 0);
       http_con_dbg("recv, ret=%d\n", ret);
       if (ret <= 0)
         goto invalid_response;
@@ -766,7 +768,7 @@ handle_content:
         curlen = sizeof(inbuf);
 
       /* Read more content. */
-      ret = recv(sock, inbuf, curlen, 0);
+      ret = (port == 443) ? mbedtls_ssl_write(&ssl, (unsigned char *) inbuf, curlen) : recv(sock, inbuf, curlen, 0);
       http_con_dbg("recv, ret=%d\n", ret);
       if (ret <= 0)
         break;
@@ -791,6 +793,14 @@ handle_content:
   /* done:*/
   http_con_dbg("Done!\n");
   close(sock);
+  if (port == 443)
+    {
+      mbedtls_ssl_close_notify(&ssl);
+      mbedtls_net_free(&server_fd);
+      mbedtls_ssl_config_free(&conf);
+      mbedtls_ctr_drbg_free(&ctr_drbg);
+      mbedtls_entropy_free(&entropy);
+    }
   http_con_dbg("Socket closed!\n");
   return OK;
 
