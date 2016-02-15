@@ -517,8 +517,8 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       /* Open HTTPS connection to server. */
       memset(&addr, 0, sizeof(addr));
       addr.sin_family = AF_INET;
-      addr.sin.port = port;
-      addr.sin.s_addr = host;
+      addr.sin_port = port;
+      addr.sin_addr.s_addr = current_srv_ip4addr->sin_addr.s_addr;
 
       if((server_fd.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         {
@@ -534,7 +534,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
       mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
-      if (mbedtls_net_handshake(&ssl) != 0)
+      if (mbedtls_ssl_handshake(&ssl) != 0)
         {
           close(server_fd.fd);
           return NETWORK_ERROR;
@@ -600,7 +600,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
           ssize_t nwritten;
 
           if (port == 443)
-            nwritten = mbedtls_ssl_write(&ssl, buf, len, 0);
+            nwritten = mbedtls_ssl_write(&ssl, (const unsigned char *) buf, len);
           else
             nwritten = send(sock, buf, len, 0);
 
