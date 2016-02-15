@@ -59,12 +59,12 @@
 #include <apps/netutils/dnsclient.h>
 #include <apps/system/conman.h>
 
-#include <mbedtls/config.h>
-#include <mbedtls/platform.h>
-#include <mbedtls/net.h>
-#include <mbedtls/ssl.h>
-#include <mbedtls/entropy.h>
-#include <mbedtls/ctr_drbg.h>
+#include <nuttx/mbedtls/config.h>
+#include <nuttx/mbedtls/platform.h>
+#include <nuttx/mbedtls/net.h>
+#include <nuttx/mbedtls/ssl.h>
+#include <nuttx/mbedtls/entropy.h>
+#include <nuttx/mbedtls/ctr_drbg.h>
 
 #include "connector.h"
 #include "conn_comm.h"
