@@ -489,6 +489,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       con->network_ready = true;
     }
 
+  con_dbg("Begin mtls init...");
   const char *pers = "mini_client";
 
 #if defined(MBEDTLS_KEY_EXCHANGE__SOME__PSK_ENABLED)
@@ -555,7 +556,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   };
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 
-
+  con_dbg("Define mtls variables...");
   mbedtls_net_context server_fd;
   struct sockaddr_in addr;
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
@@ -568,6 +569,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   mbedtls_ssl_config conf;
   if (port == 443)
     {
+      con_dbg("Port 443, init mtls variables...");
       mbedtls_ctr_drbg_init(&ctr_drbg);
 
       mbedtls_net_init(&server_fd);
@@ -622,6 +624,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 #endif
 
       /* Open HTTPS connection to server. */
+      http_con_dbg("Init https...");
       memset(&addr, 0, sizeof(addr));
       addr.sin_family = AF_INET;
       addr.sin_port = port;
@@ -639,8 +642,10 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
           return NETWORK_ERROR;
         }
 
+      con_dbg("mtls set bio...");
       mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
+      con_dbg("mtls ssl handshake...");
       if (mbedtls_ssl_handshake(&ssl) != 0)
         {
           close(server_fd.fd);
