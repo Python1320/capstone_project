@@ -1,4 +1,4 @@
-/**
+//**
  * \file config.h
  *
  * \brief Configuration options (set of defines)
@@ -298,7 +298,7 @@
  *
  * Uncomment this macro to store the AES tables in ROM.
  */
-//#define MBEDTLS_AES_ROM_TABLES
+#define MBEDTLS_AES_ROM_TABLES
 
 /**
  * \def MBEDTLS_AES_SMALL_TABLES
@@ -819,7 +819,7 @@
  *
  * Uncomment this macro to let the buffer allocator print out error messages.
  */
-//#define MBEDTLS_MEMORY_DEBUG
+#define MBEDTLS_MEMORY_DEBUG
 
 /**
  * \def MBEDTLS_MEMORY_BACKTRACE
@@ -1902,7 +1902,7 @@
  *
  * Enable this module to enable the buffer memory allocator.
  */
-//#define MBEDTLS_MEMORY_BUFFER_ALLOC_C
+#define MBEDTLS_MEMORY_BUFFER_ALLOC_C
 
 /**
  * \def MBEDTLS_NET_C
@@ -2093,7 +2093,7 @@
  *
  * This module enables abstraction of common (libc) functions.
  */
-#define MBEDTLS_PLATFORM_C
+//#define MBEDTLS_PLATFORM_C
 
 /**
  * \def MBEDTLS_RIPEMD160_C
@@ -2232,7 +2232,7 @@
  *
  * This module is required for SSL/TLS server support.
  */
-#define MBEDTLS_SSL_SRV_C
+//#define MBEDTLS_SSL_SRV_C
 
 /**
  * \def MBEDTLS_SSL_TLS_C
@@ -2511,7 +2511,7 @@
  * - without yotta is looks weird to have a YOTTA prefix.
  */
 #if defined(YOTTA_CFG_MBEDTLS_USER_CONFIG_FILE)
-#include YOTTA_CFG_MBEDTLS_USER_CONFIG_FILE
+#include YOTTA_CFG_MBEDTLS_USER_CONFIG_FILE 
 #elif defined(MBEDTLS_USER_CONFIG_FILE)
 #include MBEDTLS_USER_CONFIG_FILE
 #endif
