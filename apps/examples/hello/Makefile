@@ -41,7 +41,7 @@ include $(APPDIR)/Make.defs
 
 APPNAME = hello
 PRIORITY = SCHED_PRIORITY_DEFAULT
-STACKSIZE = 2048
+STACKSIZE = 8192
 
 # Hello, World! Example
 
