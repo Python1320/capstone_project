@@ -1,6 +1,7 @@
 #!/usr/bin/python2
 
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+import socket
 
 print("Starting")
 
@@ -21,7 +22,6 @@ def nextt():
 
 
 if LOC==False:
-    import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     port = 12347
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
