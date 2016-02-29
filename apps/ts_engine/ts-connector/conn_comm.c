@@ -460,38 +460,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   char *host;
   struct timeval tv;
   struct sockaddr_in *current_srv_ip4addr;
-
-  DEBUGASSERT(srv_addr && hdr && pdata && pstatus_code && pcontent);
-
-  *pstatus_code = ERROR;
-
-  http_con_dbg("HTTP:\n%s%s", hdr, pdata);
-
-  if (context->url)
-    {
-      host = context->url->host;
-      port = context->url->port;
-      current_srv_ip4addr = &context->url->srv_ip4addr;
-    }
-  else
-    {
-      host = con->host;
-      current_srv_ip4addr = &con->srv_ip4addr;
-    }
-
-  /* Fetch server IP address. */
-  if (current_srv_ip4addr->sin_addr.s_addr == 0)
-    {
-      con->network_ready = false;
-      if (get_server_address(current_srv_ip4addr, host) != OK)
-        return NETWORK_ERROR;
-
-      con->network_ready = true;
-    }
-
-  con_dbg("Begin mtls init...");
   const char *pers = "mini_client";
-
 #if defined(MBEDTLS_KEY_EXCHANGE__SOME__PSK_ENABLED)
   const unsigned char psk[] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -499,7 +468,6 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   };
   const char psk_id[] = "Client_identity";
 #endif
-
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
   /* This is tests/data_files/test-ca2.crt, a CA using EC secp384r1 */
   const unsigned char ca_cert[] = {
@@ -555,21 +523,47 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
     0xb2, 0xcf, 0x74, 0x7f, 0x30, 0x9f, 0x08, 0x43, 0xad, 0x20,
   };
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
-
-  con_dbg("Define mtls variables...");
   mbedtls_net_context server_fd;
   struct sockaddr_in addr;
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
   mbedtls_x509_crt ca;
 #endif
-
   mbedtls_entropy_context entropy;
   mbedtls_ctr_drbg_context ctr_drbg;
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
-  if (port == 443)
+
+  DEBUGASSERT(srv_addr && hdr && pdata && pstatus_code && pcontent);
+
+  *pstatus_code = ERROR;
+
+  http_con_dbg("HTTP:\n%s%s", hdr, pdata);
+
+  if (context->url)
     {
-      con_dbg("Port 443, init mtls variables...");
+      host = context->url->host;
+      port = context->url->port;
+      current_srv_ip4addr = &context->url->srv_ip4addr;
+    }
+  else
+    {
+      host = con->host;
+      current_srv_ip4addr = &con->srv_ip4addr;
+    }
+
+  /* Fetch server IP address. */
+  if (current_srv_ip4addr->sin_addr.s_addr == 0)
+    {
+      con->network_ready = false;
+      if (get_server_address(current_srv_ip4addr, host) != OK)
+        return NETWORK_ERROR;
+
+      con->network_ready = true;
+    }
+
+  if (port == 4433)
+    {
+      con_dbg("Port 4433, init mtls variables...");
       mbedtls_ctr_drbg_init(&ctr_drbg);
 
       mbedtls_net_init(&server_fd);
@@ -583,6 +577,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       if(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
                          (const unsigned char *) pers, strlen( pers ) ) != 0)
         {
+          con_dbg("Failed mbedtls_ctr_drbg_seed!");
           return NETWORK_ERROR;
         }
 
@@ -591,6 +586,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
                   MBEDTLS_SSL_TRANSPORT_STREAM,
                   MBEDTLS_SSL_PRESET_DEFAULT ) != 0)
         {
+          con_dbg("Failed mbedtls_ssl_config_defaults!");
           return NETWORK_ERROR;
         }
 
@@ -604,6 +600,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
       if(mbedtls_x509_crt_parse_der(&ca, ca_cert, sizeof(ca_cert)) != 0)
         {
+          con_dbg("Failed mbedtls_x509_crt_parse_der!");
           return NETWORK_ERROR;
         }
       mbedtls_ssl_conf_ca_chain(&conf, &ca, NULL);
@@ -613,12 +610,14 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
       if (mbedtls_ssl_setup(&ssl, &conf)!= 0)
         {
+          con_dbg("Failed mbedtls_ssl_setup!");
           return NETWORK_ERROR;
         }
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
       if(mbedtls_ssl_set_hostname(&ssl, "localhost") != 0)
         {
+          con_dbg("Failed mbedtls_ssl_set_hostnames!");
           return NETWORK_ERROR;
         }
 #endif
@@ -632,6 +631,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
       if((server_fd.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         {
+          http_con_dbg("Couldn't get socket!");
           return NETWORK_ERROR;
         }
 
@@ -639,6 +639,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
                   (const struct sockaddr *) &addr, sizeof(addr)) < 0)
         {
           close(server_fd.fd);
+          http_con_dbg("Couldn't connect!");
           return NETWORK_ERROR;
         }
 
@@ -649,6 +650,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       if (mbedtls_ssl_handshake(&ssl) != 0)
         {
           close(server_fd.fd);
+          http_con_dbg("Handshake failed!");
           return NETWORK_ERROR;
         }
       /* Set up a send timeout */
@@ -711,7 +713,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       do {
           ssize_t nwritten;
 
-          if (port == 443)
+          if (port == 4433)
             nwritten = mbedtls_ssl_write(&ssl, (const unsigned char *) buf, len);
           else
             nwritten = send(sock, buf, len, 0);
@@ -719,13 +721,14 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
           http_con_dbg("send, ret=%d\n", nwritten);
           if (nwritten < 0)
             {
-              if (port == 443)
+              if (port == 4433)
                 {
                   mbedtls_net_free(&server_fd);
                   mbedtls_ssl_free(&ssl);
                   mbedtls_ssl_config_free(&conf);
                   mbedtls_ctr_drbg_free(&ctr_drbg);
                   mbedtls_entropy_free(&entropy);
+                  http_con_dbg("Nwritten < 0");
                   return NETWORK_ERROR;
                 }
               else
@@ -762,7 +765,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   *pcontent = NULL;
   allocated_contentlen = 0;
   do {
-      ret = (port == 443) ? mbedtls_ssl_read(&ssl, (unsigned char *) inbuf, sizeof(inbuf)) : recv(sock, inbuf, sizeof(inbuf), 0);
+      ret = (port == 4433) ? mbedtls_ssl_read(&ssl, (unsigned char *) inbuf, sizeof(inbuf)) : recv(sock, inbuf, sizeof(inbuf), 0);
       http_con_dbg("recv, ret=%d\n", ret);
       if (ret <= 0)
         goto invalid_response;
@@ -878,7 +881,7 @@ handle_content:
         curlen = sizeof(inbuf);
 
       /* Read more content. */
-      ret = (port == 443) ? mbedtls_ssl_write(&ssl, (unsigned char *) inbuf, curlen) : recv(sock, inbuf, curlen, 0);
+      ret = (port == 4433) ? mbedtls_ssl_write(&ssl, (unsigned char *) inbuf, curlen) : recv(sock, inbuf, curlen, 0);
       http_con_dbg("recv, ret=%d\n", ret);
       if (ret <= 0)
         break;
@@ -903,7 +906,7 @@ handle_content:
   /* done:*/
   http_con_dbg("Done!\n");
   close(sock);
-  if (port == 443)
+  if (port == 4433)
     {
       mbedtls_ssl_close_notify(&ssl);
       mbedtls_net_free(&server_fd);
@@ -1091,7 +1094,7 @@ int conn_init(con_str_t *conn)
   pthread_mutex_init(&con->mutex, NULL);
 
   pthread_attr_init(&attr);
-  attr.stacksize = 1024 * 3 * 2;
+  attr.stacksize = 1024 * 6;
 
   /* Start pthread to handle network. */
   ret = pthread_create(&con->thread,
