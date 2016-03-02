@@ -46,6 +46,7 @@
 #include <nuttx/mbedtls/md5.h>
 #include <nuttx/mbedtls/net.h>
 #include <nuttx/mbedtls/debug.h>
+#include <nuttx/mbedtls/error.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -103,7 +104,7 @@ int mbedtls_entropyer( void *data,
                     unsigned char *output, size_t len, size_t *olen )
 {
     
-    printf("asking for entropy?");
+    printf("WARNING FAKE ENTROPY\n");
         
     unsigned long timer = 123;
     ((void) data);
@@ -262,12 +263,16 @@ static int mainn(void) {
 
     printf("init9\n");
 
+    mbedtls_ssl_conf_dbg( &conf, my_debug, 0 );
+    
     int sslok = mbedtls_ssl_setup( &ssl, &conf );
     
     if( sslok != 0 )
     {
         
-        printf("sslfail %d\n",sslok);
+        char str[256] = "";
+        mbedtls_strerror(sslok,str,sizeof(str));
+        printf("sslfail %d\n",str);
         ret = ssl_setup_failed;
         goto exit;
     }
