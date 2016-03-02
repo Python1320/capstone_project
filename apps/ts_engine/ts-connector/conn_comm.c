@@ -59,6 +59,13 @@
 #include <apps/netutils/dnsclient.h>
 #include <apps/system/conman.h>
 
+#include <nuttx/mbedtls/config.h>
+#include <nuttx/mbedtls/platform.h>
+#include <nuttx/mbedtls/net.h>
+#include <nuttx/mbedtls/ssl.h>
+#include <nuttx/mbedtls/entropy.h>
+#include <nuttx/mbedtls/ctr_drbg.h>
+
 #include "connector.h"
 #include "conn_comm.h"
 #include "con_dbg.h"
@@ -453,6 +460,78 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   char *host;
   struct timeval tv;
   struct sockaddr_in *current_srv_ip4addr;
+  const char *pers = "mini_client";
+#if defined(MBEDTLS_KEY_EXCHANGE__SOME__PSK_ENABLED)
+  const unsigned char psk[] = {
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
+  };
+  const char psk_id[] = "Client_identity";
+#endif
+#if defined(MBEDTLS_X509_CRT_PARSE_C)
+  /* This is tests/data_files/test-ca2.crt, a CA using EC secp384r1 */
+  const unsigned char ca_cert[] = {
+    0x30, 0x82, 0x02, 0x52, 0x30, 0x82, 0x01, 0xd7, 0xa0, 0x03, 0x02, 0x01,
+    0x02, 0x02, 0x09, 0x00, 0xc1, 0x43, 0xe2, 0x7e, 0x62, 0x43, 0xcc, 0xe8,
+    0x30, 0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02,
+    0x30, 0x3e, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x06, 0x13,
+    0x02, 0x4e, 0x4c, 0x31, 0x11, 0x30, 0x0f, 0x06, 0x03, 0x55, 0x04, 0x0a,
+    0x13, 0x08, 0x50, 0x6f, 0x6c, 0x61, 0x72, 0x53, 0x53, 0x4c, 0x31, 0x1c,
+    0x30, 0x1a, 0x06, 0x03, 0x55, 0x04, 0x03, 0x13, 0x13, 0x50, 0x6f, 0x6c,
+    0x61, 0x72, 0x73, 0x73, 0x6c, 0x20, 0x54, 0x65, 0x73, 0x74, 0x20, 0x45,
+    0x43, 0x20, 0x43, 0x41, 0x30, 0x1e, 0x17, 0x0d, 0x31, 0x33, 0x30, 0x39,
+    0x32, 0x34, 0x31, 0x35, 0x34, 0x39, 0x34, 0x38, 0x5a, 0x17, 0x0d, 0x32,
+    0x33, 0x30, 0x39, 0x32, 0x32, 0x31, 0x35, 0x34, 0x39, 0x34, 0x38, 0x5a,
+    0x30, 0x3e, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x06, 0x13,
+    0x02, 0x4e, 0x4c, 0x31, 0x11, 0x30, 0x0f, 0x06, 0x03, 0x55, 0x04, 0x0a,
+    0x13, 0x08, 0x50, 0x6f, 0x6c, 0x61, 0x72, 0x53, 0x53, 0x4c, 0x31, 0x1c,
+    0x30, 0x1a, 0x06, 0x03, 0x55, 0x04, 0x03, 0x13, 0x13, 0x50, 0x6f, 0x6c,
+    0x61, 0x72, 0x73, 0x73, 0x6c, 0x20, 0x54, 0x65, 0x73, 0x74, 0x20, 0x45,
+    0x43, 0x20, 0x43, 0x41, 0x30, 0x76, 0x30, 0x10, 0x06, 0x07, 0x2a, 0x86,
+    0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22,
+    0x03, 0x62, 0x00, 0x04, 0xc3, 0xda, 0x2b, 0x34, 0x41, 0x37, 0x58, 0x2f,
+    0x87, 0x56, 0xfe, 0xfc, 0x89, 0xba, 0x29, 0x43, 0x4b, 0x4e, 0xe0, 0x6e,
+    0xc3, 0x0e, 0x57, 0x53, 0x33, 0x39, 0x58, 0xd4, 0x52, 0xb4, 0x91, 0x95,
+    0x39, 0x0b, 0x23, 0xdf, 0x5f, 0x17, 0x24, 0x62, 0x48, 0xfc, 0x1a, 0x95,
+    0x29, 0xce, 0x2c, 0x2d, 0x87, 0xc2, 0x88, 0x52, 0x80, 0xaf, 0xd6, 0x6a,
+    0xab, 0x21, 0xdd, 0xb8, 0xd3, 0x1c, 0x6e, 0x58, 0xb8, 0xca, 0xe8, 0xb2,
+    0x69, 0x8e, 0xf3, 0x41, 0xad, 0x29, 0xc3, 0xb4, 0x5f, 0x75, 0xa7, 0x47,
+    0x6f, 0xd5, 0x19, 0x29, 0x55, 0x69, 0x9a, 0x53, 0x3b, 0x20, 0xb4, 0x66,
+    0x16, 0x60, 0x33, 0x1e, 0xa3, 0x81, 0xa0, 0x30, 0x81, 0x9d, 0x30, 0x1d,
+    0x06, 0x03, 0x55, 0x1d, 0x0e, 0x04, 0x16, 0x04, 0x14, 0x9d, 0x6d, 0x20,
+    0x24, 0x49, 0x01, 0x3f, 0x2b, 0xcb, 0x78, 0xb5, 0x19, 0xbc, 0x7e, 0x24,
+    0xc9, 0xdb, 0xfb, 0x36, 0x7c, 0x30, 0x6e, 0x06, 0x03, 0x55, 0x1d, 0x23,
+    0x04, 0x67, 0x30, 0x65, 0x80, 0x14, 0x9d, 0x6d, 0x20, 0x24, 0x49, 0x01,
+    0x3f, 0x2b, 0xcb, 0x78, 0xb5, 0x19, 0xbc, 0x7e, 0x24, 0xc9, 0xdb, 0xfb,
+    0x36, 0x7c, 0xa1, 0x42, 0xa4, 0x40, 0x30, 0x3e, 0x31, 0x0b, 0x30, 0x09,
+    0x06, 0x03, 0x55, 0x04, 0x06, 0x13, 0x02, 0x4e, 0x4c, 0x31, 0x11, 0x30,
+    0x0f, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x13, 0x08, 0x50, 0x6f, 0x6c, 0x61,
+    0x72, 0x53, 0x53, 0x4c, 0x31, 0x1c, 0x30, 0x1a, 0x06, 0x03, 0x55, 0x04,
+    0x03, 0x13, 0x13, 0x50, 0x6f, 0x6c, 0x61, 0x72, 0x73, 0x73, 0x6c, 0x20,
+    0x54, 0x65, 0x73, 0x74, 0x20, 0x45, 0x43, 0x20, 0x43, 0x41, 0x82, 0x09,
+    0x00, 0xc1, 0x43, 0xe2, 0x7e, 0x62, 0x43, 0xcc, 0xe8, 0x30, 0x0c, 0x06,
+    0x03, 0x55, 0x1d, 0x13, 0x04, 0x05, 0x30, 0x03, 0x01, 0x01, 0xff, 0x30,
+    0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02, 0x03,
+    0x69, 0x00, 0x30, 0x66, 0x02, 0x31, 0x00, 0xc3, 0xb4, 0x62, 0x73, 0x56,
+    0x28, 0x95, 0x00, 0x7d, 0x78, 0x12, 0x26, 0xd2, 0x71, 0x7b, 0x19, 0xf8,
+    0x8a, 0x98, 0x3e, 0x92, 0xfe, 0x33, 0x9e, 0xe4, 0x79, 0xd2, 0xfe, 0x7a,
+    0xb7, 0x87, 0x74, 0x3c, 0x2b, 0xb8, 0xd7, 0x69, 0x94, 0x0b, 0xa3, 0x67,
+    0x77, 0xb8, 0xb3, 0xbe, 0xd1, 0x36, 0x32, 0x02, 0x31, 0x00, 0xfd, 0x67,
+    0x9c, 0x94, 0x23, 0x67, 0xc0, 0x56, 0xba, 0x4b, 0x33, 0x15, 0x00, 0xc6,
+    0xe3, 0xcc, 0x31, 0x08, 0x2c, 0x9c, 0x8b, 0xda, 0xa9, 0x75, 0x23, 0x2f,
+    0xb8, 0x28, 0xe7, 0xf2, 0x9c, 0x14, 0x3a, 0x40, 0x01, 0x5c, 0xaf, 0x0c,
+    0xb2, 0xcf, 0x74, 0x7f, 0x30, 0x9f, 0x08, 0x43, 0xad, 0x20,
+  };
+#endif /* MBEDTLS_X509_CRT_PARSE_C */
+  mbedtls_net_context server_fd;
+  struct sockaddr_in addr;
+#if defined(MBEDTLS_X509_CRT_PARSE_C)
+  mbedtls_x509_crt ca;
+#endif
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context ctr_drbg;
+  mbedtls_ssl_context ssl;
+  mbedtls_ssl_config conf;
 
   DEBUGASSERT(srv_addr && hdr && pdata && pstatus_code && pcontent);
 
@@ -482,38 +561,148 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       con->network_ready = true;
     }
 
-  /* Open HTTP connection to server. */
-  http_con_dbg("Open socket...\n");
-  sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0)
-    return NETWORK_ERROR;
-
-  http_con_dbg("Connect to port %d ...\n", port);
-  current_srv_ip4addr->sin_port = htons(port);
-  ret = connect(sock, (struct sockaddr *)current_srv_ip4addr, sizeof(*current_srv_ip4addr));
-  if (ret < 0)
+  if (port == 4433)
     {
-      /* Could not connect to server. Try updating server IP address on
-       * next try. */
-      memset(current_srv_ip4addr, 0, sizeof(*current_srv_ip4addr));
-      goto err_close;
-    }
+      con_dbg("Port 4433, init mtls variables...");
+      mbedtls_ctr_drbg_init(&ctr_drbg);
 
-  /* Set up a send timeout */
-  tv.tv_sec = CONNECTION_SEND_TIMEOUT;
-  tv.tv_usec = 0;
-  ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv,
-                   sizeof(struct timeval));
-  if (ret < 0)
-    {
-      con_dbg("Setting SO_SNDTIMEO failed, errno: %d\n", errno);
-    }
+      mbedtls_net_init(&server_fd);
+      mbedtls_ssl_init(&ssl);
+      mbedtls_ssl_config_init(&conf);
+#if defined(MBEDTLS_X509_CRT_PARSE_C)
+      mbedtls_x509_crt_init(&ca);
+#endif
+      mbedtls_entropy_init(&entropy);
+
+      if(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
+                         (const unsigned char *) pers, strlen( pers ) ) != 0)
+        {
+          con_dbg("Failed mbedtls_ctr_drbg_seed!");
+          return NETWORK_ERROR;
+        }
+
+      if(mbedtls_ssl_config_defaults(&conf,
+                  MBEDTLS_SSL_IS_CLIENT,
+                  MBEDTLS_SSL_TRANSPORT_STREAM,
+                  MBEDTLS_SSL_PRESET_DEFAULT ) != 0)
+        {
+          con_dbg("Failed mbedtls_ssl_config_defaults!");
+          return NETWORK_ERROR;
+        }
+
+      mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+
+#if defined(MBEDTLS_KEY_EXCHANGE__SOME__PSK_ENABLED)
+      mbedtls_ssl_conf_psk(&conf, psk, sizeof(psk),
+                (const unsigned char *) psk_id, sizeof(psk_id) - 1);
+#endif
+
+#if defined(MBEDTLS_X509_CRT_PARSE_C)
+      if(mbedtls_x509_crt_parse_der(&ca, ca_cert, sizeof(ca_cert)) != 0)
+        {
+          con_dbg("Failed mbedtls_x509_crt_parse_der!");
+          return NETWORK_ERROR;
+        }
+      mbedtls_ssl_conf_ca_chain(&conf, &ca, NULL);
+      mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+#endif
+      sock = -1;      
+
+      if (mbedtls_ssl_setup(&ssl, &conf)!= 0)
+        {
+          con_dbg("Failed mbedtls_ssl_setup!");
+          return NETWORK_ERROR;
+        }
+
+#if defined(MBEDTLS_X509_CRT_PARSE_C)
+      if(mbedtls_ssl_set_hostname(&ssl, "localhost") != 0)
+        {
+          con_dbg("Failed mbedtls_ssl_set_hostnames!");
+          return NETWORK_ERROR;
+        }
+#endif
+
+      /* Open HTTPS connection to server. */
+      http_con_dbg("Init https...");
+      memset(&addr, 0, sizeof(addr));
+      addr.sin_family = AF_INET;
+      addr.sin_port = htons(port);
+      addr.sin_addr.s_addr = current_srv_ip4addr->sin_addr.s_addr;
+
+      if((server_fd.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        {
+          http_con_dbg("Couldn't get socket!");
+          return NETWORK_ERROR;
+        }
+
+      if (connect(server_fd.fd,
+                  (const struct sockaddr *) &addr, sizeof(addr)) < 0)
+        {
+          close(server_fd.fd);
+          http_con_dbg("Couldn't connect!");
+          return NETWORK_ERROR;
+        }
+
+      con_dbg("mtls set bio...");
+      mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+      con_dbg("mtls ssl handshake...");
+      if (mbedtls_ssl_handshake(&ssl) != 0)
+        {
+          close(server_fd.fd);
+          http_con_dbg("Handshake failed!");
+          return NETWORK_ERROR;
+        }
+      /* Set up a send timeout */
+      tv.tv_sec = CONNECTION_SEND_TIMEOUT;
+      tv.tv_usec = 0;
+      ret = setsockopt(server_fd.fd, SOL_SOCKET, SO_SNDTIMEO, &tv,
+                       sizeof(struct timeval));
+      if (ret < 0)
+        {
+          con_dbg("Setting SO_SNDTIMEO failed, errno: %d\n", errno);
+        }
+      else
+        {
+          http_con_dbg("SO_SNDTIMEO := %d secs\n", CONNECTION_SEND_TIMEOUT);
+        }
+
+      http_con_dbg("Send HTTPS...\n");
+    } // if
   else
     {
-      http_con_dbg("SO_SNDTIMEO := %d secs\n", CONNECTION_SEND_TIMEOUT);
-    }
+      /* Open HTTP connection to server. */
+      http_con_dbg("Open socket...\n");
+      sock = socket(AF_INET, SOCK_STREAM, 0);
+      if (sock < 0)
+        return NETWORK_ERROR;
 
-  http_con_dbg("Send HTTP...\n");
+      http_con_dbg("Connect to port %d ...\n", port);
+      current_srv_ip4addr->sin_port = htons(port);
+      ret = connect(sock, (struct sockaddr *)current_srv_ip4addr, sizeof(*current_srv_ip4addr));
+      if (ret < 0)
+        {
+          /* Could not connect to server. Try updating server IP address on
+           * next try. */
+          memset(current_srv_ip4addr, 0, sizeof(*current_srv_ip4addr));
+          goto err_close;
+        }
+      /* Set up a send timeout */
+      tv.tv_sec = CONNECTION_SEND_TIMEOUT;
+      tv.tv_usec = 0;
+      ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv,
+                       sizeof(struct timeval));
+      if (ret < 0)
+        {
+          con_dbg("Setting SO_SNDTIMEO failed, errno: %d\n", errno);
+        }
+      else
+        {
+          http_con_dbg("SO_SNDTIMEO := %d secs\n", CONNECTION_SEND_TIMEOUT);
+        }
+
+      http_con_dbg("Send HTTP...\n");
+    } // else
   /* Write buffers in 64 byte chunks. */
   while (*pbuf) {
       const char *buf = *pbuf;
@@ -524,10 +713,27 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       do {
           ssize_t nwritten;
 
-          nwritten = send(sock, buf, len, 0);
+          if (port == 4433)
+            nwritten = mbedtls_ssl_write(&ssl, (const unsigned char *) buf, len);
+          else
+            nwritten = send(sock, buf, len, 0);
+
           http_con_dbg("send, ret=%d\n", nwritten);
           if (nwritten < 0)
-            goto err_close;
+            {
+              if (port == 4433)
+                {
+                  mbedtls_net_free(&server_fd);
+                  mbedtls_ssl_free(&ssl);
+                  mbedtls_ssl_config_free(&conf);
+                  mbedtls_ctr_drbg_free(&ctr_drbg);
+                  mbedtls_entropy_free(&entropy);
+                  http_con_dbg("Nwritten < 0");
+                  return NETWORK_ERROR;
+                }
+              else
+                goto err_close;
+            }
 
           buf += nwritten;
           len -= nwritten;
@@ -559,7 +765,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   *pcontent = NULL;
   allocated_contentlen = 0;
   do {
-      ret = recv(sock, inbuf, sizeof(inbuf), 0);
+      ret = (port == 4433) ? mbedtls_ssl_read(&ssl, (unsigned char *) inbuf, sizeof(inbuf)) : recv(sock, inbuf, sizeof(inbuf), 0);
       http_con_dbg("recv, ret=%d\n", ret);
       if (ret <= 0)
         goto invalid_response;
@@ -675,7 +881,7 @@ handle_content:
         curlen = sizeof(inbuf);
 
       /* Read more content. */
-      ret = recv(sock, inbuf, curlen, 0);
+      ret = (port == 4433) ? mbedtls_ssl_write(&ssl, (unsigned char *) inbuf, curlen) : recv(sock, inbuf, curlen, 0);
       http_con_dbg("recv, ret=%d\n", ret);
       if (ret <= 0)
         break;
@@ -700,6 +906,17 @@ handle_content:
   /* done:*/
   http_con_dbg("Done!\n");
   close(sock);
+  if (port == 4433)
+    {
+      mbedtls_ssl_close_notify(&ssl);
+      mbedtls_net_free(&server_fd);
+      mbedtls_ssl_config_free(&conf);
+      mbedtls_ctr_drbg_free(&ctr_drbg);
+      mbedtls_entropy_free(&entropy);
+#if defined(MBEDTLS_X509_CRT_PARSE_C)
+      mbedtls_x509_crt_free(&ca);
+#endif
+    }
   http_con_dbg("Socket closed!\n");
   return OK;
 
@@ -877,7 +1094,7 @@ int conn_init(con_str_t *conn)
   pthread_mutex_init(&con->mutex, NULL);
 
   pthread_attr_init(&attr);
-  attr.stacksize = 1024 * 3;
+  attr.stacksize = 1024 * 6;
 
   /* Start pthread to handle network. */
   ret = pthread_create(&con->thread,
