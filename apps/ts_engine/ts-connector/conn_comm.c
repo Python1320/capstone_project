@@ -626,7 +626,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       http_con_dbg("Init https...");
       memset(&addr, 0, sizeof(addr));
       addr.sin_family = AF_INET;
-      addr.sin_port = port;
+      addr.sin_port = htons(port);
       addr.sin_addr.s_addr = current_srv_ip4addr->sin_addr.s_addr;
 
       if((server_fd.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
