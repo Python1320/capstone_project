@@ -606,7 +606,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
           return NETWORK_ERROR;
         }
       mbedtls_ssl_conf_ca_chain(&conf, &ca, NULL);
-      mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+      mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 #endif
       sock = -1;      
 
@@ -750,7 +750,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   /* Set up a receive timeout */
   tv.tv_sec = CONNECTION_RECV_TIMEOUT;
   tv.tv_usec = 0;
-  ret = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv,
+  ret = setsockopt(port == 4433 ? server_fd.fd : sock, SOL_SOCKET, SO_RCVTIMEO, &tv,
                    sizeof(struct timeval));
   if (ret < 0)
     {
@@ -1099,7 +1099,7 @@ int conn_init(con_str_t *conn)
   pthread_mutex_init(&con->mutex, NULL);
 
   pthread_attr_init(&attr);
-  attr.stacksize = 1024 * 6;
+  attr.stacksize = 1024 * 9;
 
   /* Start pthread to handle network. */
   ret = pthread_create(&con->thread,
