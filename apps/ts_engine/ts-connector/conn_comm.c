@@ -886,7 +886,7 @@ handle_content:
         curlen = sizeof(inbuf);
 
       /* Read more content. */
-      ret = (port == 4433) ? mbedtls_ssl_write(&ssl, (unsigned char *) inbuf, curlen) : recv(sock, inbuf, curlen, 0);
+      ret = (port == 4433) ? mbedtls_ssl_read(&ssl, (unsigned char *) inbuf, curlen) : recv(sock, inbuf, curlen, 0);
       http_con_dbg("recv, ret=%d\n", ret);
       if (ret <= 0)
         break;
