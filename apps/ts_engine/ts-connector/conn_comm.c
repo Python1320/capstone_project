@@ -910,7 +910,7 @@ handle_content:
 
   /* done:*/
   http_con_dbg("Done!\n");
-  close(sock);
+  close(port == 4433 ? server_fd.fd : sock);
   if (port == 4433)
     {
       mbedtls_ssl_close_notify(&ssl);
@@ -927,12 +927,12 @@ handle_content:
 
 invalid_response:
   http_con_dbg("Invalid HTTP response!\n");
-  close(sock);
+  close(port == 4433 ? server_fd.fd : sock);
   http_con_dbg("Socket closed!\n");
   return ERROR;
 
 err_close:
-  close(sock);
+  close(port == 4433 ? server_fd.fd : sock);
   http_con_dbg("Socket closed!\n");
   return NETWORK_ERROR;
 }
