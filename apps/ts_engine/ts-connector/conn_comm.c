@@ -560,10 +560,9 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
       con->network_ready = true;
     }
-
   if (port == 4433)
     {
-      con_dbg("Port 4433, init mtls variables...");
+      con_dbg("Port 4433, init mtls variables...\n");
       mbedtls_ctr_drbg_init(&ctr_drbg);
 
       mbedtls_net_init(&server_fd);
@@ -577,7 +576,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       if(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
                          (const unsigned char *) pers, strlen( pers ) ) != 0)
         {
-          con_dbg("Failed mbedtls_ctr_drbg_seed!");
+          con_dbg("Failed mbedtls_ctr_drbg_seed!\n");
           return NETWORK_ERROR;
         }
 
@@ -586,7 +585,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
                   MBEDTLS_SSL_TRANSPORT_STREAM,
                   MBEDTLS_SSL_PRESET_DEFAULT ) != 0)
         {
-          con_dbg("Failed mbedtls_ssl_config_defaults!");
+          con_dbg("Failed mbedtls_ssl_config_defaults!\n");
           return NETWORK_ERROR;
         }
 
@@ -600,7 +599,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
       if(mbedtls_x509_crt_parse_der(&ca, ca_cert, sizeof(ca_cert)) != 0)
         {
-          con_dbg("Failed mbedtls_x509_crt_parse_der!");
+          con_dbg("Failed mbedtls_x509_crt_parse_der!\n");
           return NETWORK_ERROR;
         }
       mbedtls_ssl_conf_ca_chain(&conf, &ca, NULL);
@@ -610,14 +609,14 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
       if (mbedtls_ssl_setup(&ssl, &conf)!= 0)
         {
-          con_dbg("Failed mbedtls_ssl_setup!");
+          con_dbg("Failed mbedtls_ssl_setup!\n");
           return NETWORK_ERROR;
         }
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
       if(mbedtls_ssl_set_hostname(&ssl, "localhost") != 0)
         {
-          con_dbg("Failed mbedtls_ssl_set_hostnames!");
+          con_dbg("Failed mbedtls_ssl_set_hostnames!\n");
           return NETWORK_ERROR;
         }
 #endif
@@ -631,7 +630,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
       if((server_fd.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         {
-          http_con_dbg("Couldn't get socket!");
+          http_con_dbg("Couldn't get socket!\n");
           return NETWORK_ERROR;
         }
 
@@ -639,18 +638,17 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
                   (const struct sockaddr *) &addr, sizeof(addr)) < 0)
         {
           close(server_fd.fd);
-          http_con_dbg("Couldn't connect!");
+          http_con_dbg("Couldn't connect to %s\n", host);
           return NETWORK_ERROR;
         }
 
-      con_dbg("mtls set bio...");
+      con_dbg("mtls set bio...\n");
       mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
-      con_dbg("mtls ssl handshake...");
-      if (mbedtls_ssl_handshake(&ssl) != 0)
+      con_dbg("mtls ssl handshake...\n");
         {
           close(server_fd.fd);
-          http_con_dbg("Handshake failed!");
+          http_con_dbg("Handshake failed: %d\n", ret);
           return NETWORK_ERROR;
         }
       /* Set up a send timeout */
