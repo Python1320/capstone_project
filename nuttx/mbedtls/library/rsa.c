@@ -51,7 +51,7 @@
 #else
 #include <stdio.h>
 #define mbedtls_printf printf
-#define mbedtls_calloc calloc
+#define mbedtls_calloc(arg1, arg2) memset(malloc(arg1, arg2), 0, arg1 * arg2)
 #define mbedtls_free   free
 #endif
 

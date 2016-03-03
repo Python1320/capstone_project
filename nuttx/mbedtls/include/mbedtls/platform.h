@@ -58,7 +58,7 @@ extern "C" {
 #define MBEDTLS_PLATFORM_STD_FPRINTF fprintf /**< Default fprintf to use */
 #endif
 #if !defined(MBEDTLS_PLATFORM_STD_CALLOC)
-#define MBEDTLS_PLATFORM_STD_CALLOC   calloc /**< Default allocator to use */
+#define MBEDTLS_PLATFORM_STD_CALLOC   calloc(arg1, arg2) memset(malloc(arg1, arg2), 0, arg1 * arg2)/**< Default allocator to use */
 #endif
 #if !defined(MBEDTLS_PLATFORM_STD_FREE)
 #define MBEDTLS_PLATFORM_STD_FREE       free /**< Default free to use */
