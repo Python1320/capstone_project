@@ -573,19 +573,21 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 #endif
       mbedtls_entropy_init(&entropy);
 
-      if(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
-                         (const unsigned char *) pers, strlen( pers ) ) != 0)
+      ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
+                         (const unsigned char *) pers, strlen(pers));
+      if (ret != 0)
         {
-          con_dbg("Failed mbedtls_ctr_drbg_seed!\n");
+          con_dbg("Failed mbedtls_ctr_drbg_seed: %d\n", ret);
           return NETWORK_ERROR;
         }
 
-      if(mbedtls_ssl_config_defaults(&conf,
+      ret = mbedtls_ssl_config_defaults(&conf,
                   MBEDTLS_SSL_IS_CLIENT,
                   MBEDTLS_SSL_TRANSPORT_STREAM,
-                  MBEDTLS_SSL_PRESET_DEFAULT ) != 0)
+                  MBEDTLS_SSL_PRESET_DEFAULT);
+      if (ret != 0)
         {
-          con_dbg("Failed mbedtls_ssl_config_defaults!\n");
+          con_dbg("Failed mbedtls_ssl_config_defaults: %d\n", ret);
           return NETWORK_ERROR;
         }
 
@@ -597,9 +599,10 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 #endif
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
-      if(mbedtls_x509_crt_parse_der(&ca, ca_cert, sizeof(ca_cert)) != 0)
+      ret = mbedtls_x509_crt_parse_der(&ca, ca_cert, sizeof(ca_cert));
+      if (ret != 0)
         {
-          con_dbg("Failed mbedtls_x509_crt_parse_der!\n");
+          con_dbg("Failed mbedtls_x509_crt_parse_der: %d\n", ret);
           return NETWORK_ERROR;
         }
       mbedtls_ssl_conf_ca_chain(&conf, &ca, NULL);
@@ -607,22 +610,24 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 #endif
       sock = -1;      
 
-      if (mbedtls_ssl_setup(&ssl, &conf)!= 0)
+      ret = mbedtls_ssl_setup(&ssl, &conf);
+      if (ret != 0)
         {
-          con_dbg("Failed mbedtls_ssl_setup!\n");
+          con_dbg("Failed mbedtls_ssl_setup: %d\n", ret);
           return NETWORK_ERROR;
         }
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
-      if(mbedtls_ssl_set_hostname(&ssl, "localhost") != 0)
+      ret = mbedtls_ssl_set_hostname(&ssl, "localhost");
+      if (ret != 0)
         {
-          con_dbg("Failed mbedtls_ssl_set_hostnames!\n");
+          con_dbg("Failed mbedtls_ssl_set_hostnames: %d\n", ret);
           return NETWORK_ERROR;
         }
 #endif
 
       /* Open HTTPS connection to server. */
-      http_con_dbg("Init https...");
+      http_con_dbg("Init https...\n");
       memset(&addr, 0, sizeof(addr));
       addr.sin_family = AF_INET;
       addr.sin_port = htons(port);
@@ -646,6 +651,8 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
       con_dbg("mtls ssl handshake...\n");
+      ret = mbedtls_ssl_handshake(&ssl);
+      if (ret != 0)
         {
           close(server_fd.fd);
           http_con_dbg("Handshake failed: %d\n", ret);
