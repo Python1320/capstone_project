@@ -69,8 +69,7 @@ static void my_debug( void *ctx, int level,
                       const char *str )
 {
     ((void) level);
-
-    printf( "TLS: %s:%04d: %s\n", file, line, str );
+    printf( "> %s:%04d: %s\n", file, line, str );
 }
 
 
@@ -199,7 +198,6 @@ static int mainn(void) {
     
     
     
-    
     printf("init0\n");
 
     mbedtls_entropy_context entropy;
@@ -221,6 +219,8 @@ static int mainn(void) {
     printf("init5\n");
 
     mbedtls_entropy_init( &entropy );
+    
+    mbedtls_debug_set_threshold(6);
     
     printf("addsrc\n");
     
@@ -244,6 +244,7 @@ static int mainn(void) {
     if( mbedtls_ssl_config_defaults( &conf,
                 MBEDTLS_SSL_IS_CLIENT,
                 MBEDTLS_SSL_TRANSPORT_STREAM,
+                
                 MBEDTLS_SSL_PRESET_DEFAULT ) != 0 )
     {
         
@@ -251,11 +252,11 @@ static int mainn(void) {
         ret = ssl_config_defaults_failed;
         goto exit;
     }
-    
+    mbedtls_ssl_conf_authmode(&conf,MBEDTLS_SSL_VERIFY_NONE);
     
     
     printf("init7\n");
-    mbedtls_ssl_conf_dbg( &conf, my_debug, 0 );
+    mbedtls_ssl_conf_dbg( &conf, my_debug, &conf );
     
     printf("init8\n");
     
@@ -263,7 +264,7 @@ static int mainn(void) {
 
     printf("init9\n");
 
-    mbedtls_ssl_conf_dbg( &conf, my_debug, 0 );
+    mbedtls_ssl_conf_dbg( &conf, my_debug, &conf );
     
     int sslok = mbedtls_ssl_setup( &ssl, &conf );
     
@@ -275,7 +276,10 @@ static int mainn(void) {
         printf("sslfail %d\n",str);
         ret = ssl_setup_failed;
         goto exit;
+    
+        
     }
+    
     memset( &addr, 0, sizeof( addr ) );
     addr.sin_family = AF_INET;
     printf("ssl\n");
@@ -311,14 +315,16 @@ static int mainn(void) {
     mbedtls_ssl_set_bio( &ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL );
 
         printf("bio\n");
-    if( mbedtls_ssl_handshake( &ssl ) != 0 )
+    int hshake = mbedtls_ssl_handshake( &ssl );
+    
+    if( hshake != 0 )
     {
-        
-        printf("shakefial\n");
+        printf("shakefial %d %d\n",errno,hshake);
         ret = ssl_handshake_failed;
         goto exit;
     }
-        printf("handshake\n");
+    
+    printf("handshake\n");
 
     if( mbedtls_ssl_write( &ssl, (const unsigned char *) GET_REQUEST,
                          sizeof( GET_REQUEST ) - 1 ) <= 0 )
