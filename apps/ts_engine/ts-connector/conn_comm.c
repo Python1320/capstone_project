@@ -896,46 +896,18 @@ handle_content:
 
   /* done:*/
   http_con_dbg("Done!\n");
-  if (port == 4433)
-    {
-      close(server_fd.fd);
-      mbedtls_ssl_close_notify(&ssl);
-      mbedtls_net_free(&server_fd);
-      mbedtls_ssl_config_free(&conf);
-      mbedtls_ctr_drbg_free(&ctr_drbg);
-      mbedtls_entropy_free(&entropy);
-#if defined(MBEDTLS_X509_CRT_PARSE_C)
-      mbedtls_x509_crt_free(&ca);
-#endif
-    }
-  else
-    {
-      close(sock);
-    }
-  http_con_dbg("Socket closed!\n");
-  return OK;
+  ret = OK;
+  goto free_context;
 
 invalid_response:
   http_con_dbg("Invalid HTTP response!\n");
-  if (port == 4433)
-    {
-      close(server_fd.fd);
-      mbedtls_ssl_free(&ssl);
-      mbedtls_ssl_config_free(&conf);
-      mbedtls_ctr_drbg_free(&ctr_drbg);
-      mbedtls_entropy_free(&entropy);
-#if defined(MBEDTLS_X509_CRT_PARSE_C)
-      mbedtls_x509_crt_free(&ca);
-#endif
-    }
-  else
-    {
-      close(sock);
-    }
-  http_con_dbg("Socket closed!\n");
-  return ERROR;
+  ret = ERROR;
+  goto free_context;
 
 err_close:
+  ret = NETWORK_ERROR;
+
+free_context:
   if (port == 4433)
     {
       close(server_fd.fd);
@@ -952,7 +924,7 @@ err_close:
       close(sock);
     }
   http_con_dbg("Socket closed!\n");
-  return NETWORK_ERROR;
+  return ret;
 }
 
 /****************************************************************************
