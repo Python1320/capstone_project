@@ -781,7 +781,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
               if (linenum == 0) {
                   /* First line, "HTTP/1.1 <code> " */
-                  num = sscanf(linebuf, "HTTP/1.1 %d ", pstatus_code);
+                  num = sscanf(linebuf, "HTTP/1.[01] %d ", pstatus_code);
                   if (num != 1) {
                       /* Not HTTP response. */
                       goto invalid_response;
