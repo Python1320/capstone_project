@@ -636,7 +636,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
       if((server_fd.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         {
           http_con_dbg("Couldn't get socket!\n");
-          return NETWORK_ERROR;
+          goto err_close;
         }
 
       if (connect(server_fd.fd,
@@ -644,7 +644,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
         {
           close(server_fd.fd);
           http_con_dbg("Couldn't connect to %s\n", host);
-          return NETWORK_ERROR;
+          goto err_close;
         }
 
       con_dbg("mtls set bio...\n");
@@ -725,21 +725,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
           http_con_dbg("send, ret=%d\n", nwritten);
           if (nwritten < 0)
-            {
-              if (port == 4433)
-                {
-                  mbedtls_net_free(&server_fd);
-                  mbedtls_ssl_free(&ssl);
-                  mbedtls_ssl_config_free(&conf);
-                  mbedtls_ctr_drbg_free(&ctr_drbg);
-                  mbedtls_entropy_free(&entropy);
-                  http_con_dbg("Nwritten < 0");
-                  return NETWORK_ERROR;
-                }
-              else
-                goto err_close;
-            }
-
+            goto err_close;
           buf += nwritten;
           len -= nwritten;
       } while (len);
@@ -910,9 +896,9 @@ handle_content:
 
   /* done:*/
   http_con_dbg("Done!\n");
-  close(port == 4433 ? server_fd.fd : sock);
   if (port == 4433)
     {
+      close(server_fd.fd);
       mbedtls_ssl_close_notify(&ssl);
       mbedtls_net_free(&server_fd);
       mbedtls_ssl_config_free(&conf);
@@ -922,17 +908,49 @@ handle_content:
       mbedtls_x509_crt_free(&ca);
 #endif
     }
+  else
+    {
+      close(sock);
+    }
   http_con_dbg("Socket closed!\n");
   return OK;
 
 invalid_response:
   http_con_dbg("Invalid HTTP response!\n");
-  close(port == 4433 ? server_fd.fd : sock);
+  if (port == 4433)
+    {
+      close(server_fd.fd);
+      mbedtls_ssl_free(&ssl);
+      mbedtls_ssl_config_free(&conf);
+      mbedtls_ctr_drbg_free(&ctr_drbg);
+      mbedtls_entropy_free(&entropy);
+#if defined(MBEDTLS_X509_CRT_PARSE_C)
+      mbedtls_x509_crt_free(&ca);
+#endif
+    }
+  else
+    {
+      close(sock);
+    }
   http_con_dbg("Socket closed!\n");
   return ERROR;
 
 err_close:
-  close(port == 4433 ? server_fd.fd : sock);
+  if (port == 4433)
+    {
+      close(server_fd.fd);
+      mbedtls_ssl_free(&ssl);
+      mbedtls_ssl_config_free(&conf);
+      mbedtls_ctr_drbg_free(&ctr_drbg);
+      mbedtls_entropy_free(&entropy);
+#if defined(MBEDTLS_X509_CRT_PARSE_C)
+      mbedtls_x509_crt_free(&ca);
+#endif
+    }
+  else
+    {
+      close(sock);
+    }
   http_con_dbg("Socket closed!\n");
   return NETWORK_ERROR;
 }
