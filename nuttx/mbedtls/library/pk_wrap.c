@@ -45,7 +45,7 @@
 #include "mbedtls/platform.h"
 #else
 #include <stdlib.h>
-#define mbedtls_calloc(arg1, arg2) memset(malloc(arg1, arg2), 0, arg1 * arg2)
+#define mbedtls_calloc     calloc
 #define mbedtls_free       free
 #endif
 
