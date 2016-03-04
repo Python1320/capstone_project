@@ -1089,7 +1089,7 @@ int conn_init(con_str_t *conn)
   pthread_mutex_init(&con->mutex, NULL);
 
   pthread_attr_init(&attr);
-  attr.stacksize = 1024 * 9;
+  attr.stacksize = 1024 * 6;
 
   /* Start pthread to handle network. */
   ret = pthread_create(&con->thread,
