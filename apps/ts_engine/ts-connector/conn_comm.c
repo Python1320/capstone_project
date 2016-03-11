@@ -756,7 +756,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
   *pcontent = NULL;
   allocated_contentlen = 0;
   do {
-      ret = (port == 4433) ? mbedtls_ssl_read(&ssl, (unsigned char *) inbuf, sizeof(inbuf)) : recv(sock, inbuf, sizeof(inbuf), 0);
+      ret = (port == 4433) ? mbedtls_ssl_read(&ssl, (unsigned char *) inbuf, sizeof((unsigned char *) inbuf)) : recv(sock, inbuf, sizeof(inbuf), 0);
       http_con_dbg("recv, ret=%d\n", ret);
       if (ret <= 0)
         goto invalid_response;
@@ -781,7 +781,7 @@ static int execute_http_request(struct sockaddr_in *srv_addr, uint16_t port, cha
 
               if (linenum == 0) {
                   /* First line, "HTTP/1.1 <code> " */
-                  num = sscanf(linebuf, "HTTP/1.[01] %d ", pstatus_code);
+                  num = sscanf(linebuf, "HTTP/1.1 %d ", pstatus_code);
                   if (num != 1) {
                       /* Not HTTP response. */
                       goto invalid_response;
