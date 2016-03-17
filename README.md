@@ -3,7 +3,7 @@ Security research on [Thingsee One](https://thingsee.com/data-sheet), an IoT dev
 
 Some background material
 
- - http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=7374198
+ - ![Security in the Internet of Things through obfuscation and diversification](http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=7374189)
 
 ![ThingSec Edition](branding//AWzO3qP.jpg)
 
