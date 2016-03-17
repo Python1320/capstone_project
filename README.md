@@ -1,6 +1,10 @@
 # University capstone project
 Security research on [Thingsee One](https://thingsee.com/data-sheet), an IoT device
 
+Some background material
+
+ - http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=7374198
+
 ![ThingSec Edition](branding//AWzO3qP.jpg)
 
 ### Folders
